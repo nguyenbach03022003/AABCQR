@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.aabcqr"
+    namespace = "com.app.src.abcqr"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.aabcqr"
+        applicationId = "com.app.src.abcqr"
         minSdk = 34
         targetSdk = 34
         versionCode = 1
@@ -41,6 +41,7 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(libs.navigation.fragment)
     implementation(libs.navigation.ui)
+    implementation(libs.room.common)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

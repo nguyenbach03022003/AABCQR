@@ -1,0 +1,16 @@
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@+id/navigation_generate">
+    <fragment
+        android:id="@+id/navigation_scan"
+        android:name="com.app.src.abcqr.ui.main.fragment.ScanFragment"
+        android:label="@string/title_scan"
+        tools:layout="@layout/fragment_scan" />
+    <fragment
+        android:id="@+id/navigation_generate"
+        android:name="com.app.src.abcqr.ui.main.fragment.GenerateFragment"
+        android:label="@string/title_generate"
+        tools:layout="@layout/fragment_generate" />
+</navigation>
