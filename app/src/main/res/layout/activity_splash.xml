@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.app.src.ahqr.ui.main.SplashActivity">
+    tools:context="com.app.src.abcqr.ui.main.SplashActivity">
 
     <ImageView
         android:id="@+id/logoImageView"
