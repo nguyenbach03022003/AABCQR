@@ -6,4 +6,5 @@
     <string name="image_button">Image Button</string>
     <string name="delete">delete_button</string>
     <string name="perform">perform_button</string>
+    <string name="close">Close</string>
 </resources>

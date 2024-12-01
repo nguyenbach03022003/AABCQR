@@ -8,52 +8,71 @@ public class VietQRCodeGenerator {
 
     static {
         // Khởi tạo danh sách các mã ngân hàng
-        BANK_CODES.put("Agribank", "970499");
-        BANK_CODES.put("Vietinbank", "970489");
-        BANK_CODES.put("DongABank", "970406");
-        BANK_CODES.put("Saigonbank", "161087");
-        BANK_CODES.put("BIDV", "970488");
-        BANK_CODES.put("SeABank", "970468");
-        BANK_CODES.put("GP.Bank", "970408");
-        BANK_CODES.put("PG Bank", "970430");
-        BANK_CODES.put("PVcomBank", "970412");
-        BANK_CODES.put("Kienlongbank", "970452");
-        BANK_CODES.put("Vietcapital Bank", "970454");
-        BANK_CODES.put("VietBank", "970433");
-        BANK_CODES.put("OceanBank", "970414");
-        BANK_CODES.put("Sacombank", "970403");
-        BANK_CODES.put("ABBank", "970459");
-        BANK_CODES.put("VRB", "970421");
-        BANK_CODES.put("Vietcombank", "686868");
-        BANK_CODES.put("ACB", "970416");
-        BANK_CODES.put("Eximbank", "452999");
-        BANK_CODES.put("TPBank", "970423");
-        BANK_CODES.put("SHB", "970443");
-        BANK_CODES.put("HDBank", "970437");
-        BANK_CODES.put("MBBank", "970422");
-        BANK_CODES.put("VPBank", "981957");
-        BANK_CODES.put("VIB", "180906");
-        BANK_CODES.put("VietNam Asia Bank", "166888");
-        BANK_CODES.put("Techcombank", "888899");
+        BANK_CODES.put("VietinBank", "970415");
+        BANK_CODES.put("Vietcombank", "970436");
+        BANK_CODES.put("BIDV", "970418");
+        BANK_CODES.put("Agribank", "970405");
         BANK_CODES.put("OCB", "970448");
-        BANK_CODES.put("NCB", "818188");
-        BANK_CODES.put("HLBVN", "970442");
-        BANK_CODES.put("LienVietPostBank", "970449");
+        BANK_CODES.put("MBBank", "970422");
+        BANK_CODES.put("Techcombank", "970407");
+        BANK_CODES.put("ACB", "970416");
+        BANK_CODES.put("VPBank", "970432");
+        BANK_CODES.put("TPBank", "970423");
+        BANK_CODES.put("Sacombank", "970403");
+        BANK_CODES.put("HDBank", "970437");
+        BANK_CODES.put("VietCapitalBank", "970454");
+        BANK_CODES.put("SCB", "970429");
+        BANK_CODES.put("VIB", "970441");
+        BANK_CODES.put("SHB", "970443");
+        BANK_CODES.put("Eximbank", "970431");
+        BANK_CODES.put("MSB", "970426");
+        BANK_CODES.put("CAKE", "546034");
+        BANK_CODES.put("Ubank", "546035");
+        BANK_CODES.put("Timo", "963388");
+        BANK_CODES.put("ViettelMoney", "971005");
+        BANK_CODES.put("VNPTMoney", "971011");
+        BANK_CODES.put("SaigonBank", "970400");
         BANK_CODES.put("BacABank", "970409");
-        BANK_CODES.put("BVB", "970438");
-        BANK_CODES.put("ShinhanVN", "970424");
-        BANK_CODES.put("Public Bank Viet Nam", "970439");
-        BANK_CODES.put("SCB", "157979");
-        BANK_CODES.put("Maritime Bank", "970426");
+        BANK_CODES.put("PVcomBank", "970412");
+        BANK_CODES.put("Oceanbank", "970414");
+        BANK_CODES.put("NCB", "970419");
+        BANK_CODES.put("ShinhanBank", "970424");
+        BANK_CODES.put("ABBANK", "970425");
+        BANK_CODES.put("VietABank", "970427");
         BANK_CODES.put("NamABank", "970428");
-        BANK_CODES.put("Indovina Bank", "970434");
-        BANK_CODES.put("Viet Nam Woori Bank", "970457");
-        BANK_CODES.put("IBK Bank", "970455");
-        BANK_CODES.put("Co-op Bank", "970446");
+        BANK_CODES.put("PGBank", "970430");
+        BANK_CODES.put("VietBank", "970433");
+        BANK_CODES.put("BaoVietBank", "970438");
+        BANK_CODES.put("SeABank", "970440");
+        BANK_CODES.put("COOPBANK", "970446");
+        BANK_CODES.put("LPBank", "970449");
+        BANK_CODES.put("KienLongBank", "970452");
+        BANK_CODES.put("KBank", "668888");
+        BANK_CODES.put("KookminHN", "970462");
+        BANK_CODES.put("KEBHanaHCM", "970466");
+        BANK_CODES.put("KEBHanaHN", "970467");
+        BANK_CODES.put("MAFC", "977777");
+        BANK_CODES.put("Citibank", "533948");
+        BANK_CODES.put("KookminHCM", "970463");
+        BANK_CODES.put("VBSP", "999888");
+        BANK_CODES.put("Woori", "970457");
+        BANK_CODES.put("VRB", "970421");
+        BANK_CODES.put("UnitedOverseas", "970458");
+        BANK_CODES.put("StandardChartered", "970410");
+        BANK_CODES.put("PublicBank", "970439");
+        BANK_CODES.put("Nonghyup", "801011");
+        BANK_CODES.put("IndovinaBank", "970434");
+        BANK_CODES.put("IBKHCM", "970456");
+        BANK_CODES.put("IBKHN", "970455");
+        BANK_CODES.put("HSBC", "458761");
+        BANK_CODES.put("HongLeong", "970442");
+        BANK_CODES.put("GPBank", "970408");
+        BANK_CODES.put("DongABank", "970406");
+        BANK_CODES.put("DBSBank", "796500");
         BANK_CODES.put("CIMB", "422589");
-        BANK_CODES.put("UOB", "970458");
-        // Thêm các ngân hàng khác nếu cần
+        BANK_CODES.put("CBBank", "970444");
     }
+
 
     /**
      * Generate a VietQR string based on the input parameters.
@@ -84,18 +103,23 @@ public class VietQRCodeGenerator {
         }
         return String.valueOf(count);
     }
-    public static String generateVietQRCode(String bankName, String accountNumber, String beneficiaryName) {
-        if (bankName == null || accountNumber == null || beneficiaryName == null) {
+    public static String generateVietQRCode(String bankName, String accountNumber, String Amount_VND) {
+        if (bankName == null || accountNumber == null ) {
             throw new IllegalArgumentException("All inputs must be non-null.");
         }
+
         String bankCode = BANK_CODES.get(bankName);
         // Fixed VietQR fields
         String payloadFormat = "000201"; //ID 00
         String method_In  = "010211"; //ID01 - QR tinh
         String DVCNTT_Napas = generateID38(bankCode, accountNumber); // ID38
         String currencyCode = "5303704";
+        String amount_VND = "";
+        if (Amount_VND != null) {
+             amount_VND = "54" + countCharacters(Amount_VND) + Amount_VND;
+        }
         String Country = "5802VN";
-        String data_fin = payloadFormat + method_In + DVCNTT_Napas + currencyCode + Country + "6304";
+        String data_fin = payloadFormat + method_In + DVCNTT_Napas + currencyCode + amount_VND + Country + "6304";
         String CRC = calculateCRC(data_fin);
         System.out.printf (data_fin);
         return data_fin + CRC;

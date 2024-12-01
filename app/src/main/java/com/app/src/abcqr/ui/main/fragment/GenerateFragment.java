@@ -27,6 +27,8 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
 
+import com.app.src.abcqr.ui.main.fragment.QRCodeDialogFragment;
+import com.app.src.abcqr.R;
 import com.app.src.abcqr.databinding.FragmentGenerateBinding;
 import com.app.src.abcqr.utils.generate.QRVersion;
 import com.app.src.abcqr.utils.VietQRCodeGenerator;
@@ -51,49 +53,45 @@ public class GenerateFragment extends Fragment {
     private String[] blockSizes = {"5", "10", "15", "20", "30", "40", "50"};
     private String[] beneficiary_bank = {
             "Agribank",
-            "Vietinbank",
+            "VietinBank",
             "DongABank",
-            "Saigonbank",
+            "SaigonBank",
             "BIDV",
             "SeABank",
-            "GP.Bank",
-            "PG Bank",
-            "PVcomBank",
-            "Kienlongbank",
-            "Vietcapital Bank",
-            "VietBank",
-            "OceanBank",
-            "Sacombank",
-            "ABBank",
-            "VRB",
+            "GPBank",
             "Vietcombank",
-            "ACB",
-            "Eximbank",
-            "TPBank",
-            "SHB",
-            "HDBank",
+            "Techcombank",
             "MBBank",
             "VPBank",
-            "VIB",
-            "VietNam Asia Bank",
-            "Techcombank",
-            "OCB",
-            "NCB",
-            "HLBVN",
-            "LienVietPostBank",
-            "BacABank",
-            "BVB",
-            "ShinhanVN",
-            "Public Bank Viet Nam",
+            "HDBank",
             "SCB",
-            "Maritime Bank",
+            "Eximbank",
+            "SHB",
+            "Oceanbank",
+            "PVcomBank",
+            "VIB",
+            "NCB",
+            "ABBANK",
             "NamABank",
-            "Indovina Bank",
-            "Viet Nam Woori Bank",
-            "IBK Bank",
-            "Co-op Bank",
+            "VietABank",
+            "VietCapitalBank",
+            "BaoVietBank",
+            "COOPBANK",
+            "KienLongBank",
+            "LPBank",
+            "StandardChartered",
+            "UnitedOverseas",
+            "ShinhanBank",
+            "Citibank",
+            "KookminHN",
+            "KEBHanaHN",
+            "Timo",
+            "VietBank",
+            "DongABank",
+            "DBSBank",
             "CIMB",
-            "UOB"
+            "MAFC",
+            "HSBC"
     };
 
     @Nullable
@@ -137,36 +135,27 @@ public class GenerateFragment extends Fragment {
         shareButton = binding.shareButton;
         shareButton.setOnClickListener(v -> shareQRCode());
 
-        buttonGenerate.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
+        buttonGenerate.setOnClickListener(v -> {
+            String errorCorrectionLevel = (String) spinnerErrorCorrection.getSelectedItem();
+            String blockSize = (String) spinnerBlockSize.getSelectedItem();
+            String data = getCurrentDataString();
+            QRVersion.ErrorCorrectionLevel ec = QRVersion.ErrorCorrectionLevel.valueOf(errorCorrectionLevel);
 
-                String errorCorrectionLevel = (String) spinnerErrorCorrection.getSelectedItem();
-                String blockSize = (String) spinnerBlockSize.getSelectedItem();
-                String data = getCurrentDataString();
-                QRVersion.ErrorCorrectionLevel ec = QRVersion.ErrorCorrectionLevel.valueOf(errorCorrectionLevel);
+            qrCodeBitmap = generateViewModel.generateQRCode(data, ec, Integer.parseInt(blockSize)).getValue();
 
-                qrCodeBitmap = generateViewModel.generateQRCode(data, ec, Integer.parseInt(blockSize)).getValue();
-
-                qrCodeImage.setImageBitmap(qrCodeBitmap);
-                ViewGroup.LayoutParams params = qrCodeImage.getLayoutParams();
-                params.width = qrCodeBitmap.getWidth();
-                params.height = qrCodeBitmap.getHeight();
-                qrCodeImage.setLayoutParams(params);
-
-                qrCodeImage.setVisibility(View.VISIBLE);
-                saveButton.setVisibility(View.VISIBLE);
-                shareButton.setVisibility(View.VISIBLE);
-            }
+            // Hiển thị QR Code trong cửa sổ nổi
+            QRCodeDialogFragment qrCodeDialogFragment = new QRCodeDialogFragment(qrCodeBitmap);
+            qrCodeDialogFragment.show(getFragmentManager(), "QRCodeDialog");
         });
-        saveButton.setOnClickListener(v -> {
-            boolean success = generateViewModel.saveQRCodeToLibrary(getContext(), qrCodeImage.getDrawable());
-            if (!success) {
-                Toast.makeText(getContext(), "Failed to save image", Toast.LENGTH_LONG).show();
-            } else {
-                Toast.makeText(getContext(), "Image saved successfully", Toast.LENGTH_LONG).show();
-            }
-        });
+
+//        saveButton.setOnClickListener(v -> {
+//            boolean success = generateViewModel.saveQRCodeToLibrary(getContext(), qrCodeImage.getDrawable());
+//            if (!success) {
+//                Toast.makeText(getContext(), "Failed to save image", Toast.LENGTH_LONG).show();
+//            } else {
+//                Toast.makeText(getContext(), "Image saved successfully", Toast.LENGTH_LONG).show();
+//            }
+//        });
         return view;
     }
     private void addSpinnerField(String label, String[] options) {
@@ -216,6 +205,7 @@ public class GenerateFragment extends Fragment {
             case 7:
                 addSpinnerField("Beneficiary Bank", beneficiary_bank);
                 addEditTextField("Beneficiary Account Number");
+                addEditTextField("Amount VND");
                 break;
 
         }
@@ -346,7 +336,7 @@ public class GenerateFragment extends Fragment {
             case 7: // Beneficiary Bank
                 String selectedBank = "";
                 String accountNumber = "";
-                String nameBank = "";
+                String Amount_VND = "";
 
                 for (int i = 0; i < uniqueFieldsContainer.getChildCount(); i++) {
                     View view = uniqueFieldsContainer.getChildAt(i);
@@ -358,12 +348,12 @@ public class GenerateFragment extends Fragment {
                         EditText editText = (EditText) view;
                         if ("Beneficiary Account Number".equals(editText.getHint().toString())) {
                             accountNumber = editText.getText().toString();
-                        } else if ("Name".equals(editText.getHint().toString())) {
-                            nameBank = editText.getText().toString();
+                        } else if ("Amount VND".equals(editText.getHint().toString())) {
+                            Amount_VND = editText.getText().toString();
                         }
                     }
                 }
-                data.append(generateVietQRCode(selectedBank, accountNumber, nameBank));
+                data.append(generateVietQRCode(selectedBank, accountNumber, Amount_VND));
                 break;
         }
         return data.toString();
