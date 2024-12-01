@@ -1,5 +1,7 @@
 package com.app.src.abcqr.ui.main.fragment;
 
+import static com.app.src.abcqr.utils.VietQRCodeGenerator.generateVietQRCode;
+
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -14,6 +16,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 
@@ -26,7 +29,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.app.src.abcqr.databinding.FragmentGenerateBinding;
 import com.app.src.abcqr.utils.generate.QRVersion;
-
+import com.app.src.abcqr.utils.VietQRCodeGenerator;
 import java.io.File;
 import java.io.FileOutputStream;
 
@@ -43,9 +46,55 @@ public class GenerateFragment extends Fragment {
     private Bitmap qrCodeBitmap;
     private int qrFormatMode;
 
-    private String[] codeActions = {"Browse to a website", "Make a phone call", "Send an SMS", "Send an E-mail", "Free Formatted Text", "meCard", "Location"};
+    private String[] codeActions = {"Browse to a website", "Make a phone call", "Send an SMS", "Send an E-mail", "Free Formatted Text", "meCard", "Location", "VietQR"};
     private String[] errorCorrectionLevels = {"L", "M", "Q", "H"};
     private String[] blockSizes = {"5", "10", "15", "20", "30", "40", "50"};
+    private String[] beneficiary_bank = {
+            "Agribank",
+            "Vietinbank",
+            "DongABank",
+            "Saigonbank",
+            "BIDV",
+            "SeABank",
+            "GP.Bank",
+            "PG Bank",
+            "PVcomBank",
+            "Kienlongbank",
+            "Vietcapital Bank",
+            "VietBank",
+            "OceanBank",
+            "Sacombank",
+            "ABBank",
+            "VRB",
+            "Vietcombank",
+            "ACB",
+            "Eximbank",
+            "TPBank",
+            "SHB",
+            "HDBank",
+            "MBBank",
+            "VPBank",
+            "VIB",
+            "VietNam Asia Bank",
+            "Techcombank",
+            "OCB",
+            "NCB",
+            "HLBVN",
+            "LienVietPostBank",
+            "BacABank",
+            "BVB",
+            "ShinhanVN",
+            "Public Bank Viet Nam",
+            "SCB",
+            "Maritime Bank",
+            "NamABank",
+            "Indovina Bank",
+            "Viet Nam Woori Bank",
+            "IBK Bank",
+            "Co-op Bank",
+            "CIMB",
+            "UOB"
+    };
 
     @Nullable
     @Override
@@ -120,7 +169,17 @@ public class GenerateFragment extends Fragment {
         });
         return view;
     }
+    private void addSpinnerField(String label, String[] options) {
+        TextView textView = new TextView(getContext());
+        textView.setText(label);
+        uniqueFieldsContainer.addView(textView);
 
+        Spinner spinner = new Spinner(getContext());
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, options);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        uniqueFieldsContainer.addView(spinner);
+    }
     private void updateUniqueFields() {
         uniqueFieldsContainer.removeAllViews();
 
@@ -153,6 +212,10 @@ public class GenerateFragment extends Fragment {
                 break;
             case 6:
                 addEditTextField("Address");
+                break;
+            case 7:
+                addSpinnerField("Beneficiary Bank", beneficiary_bank);
+                addEditTextField("Beneficiary Account Number");
                 break;
 
         }
@@ -279,6 +342,28 @@ public class GenerateFragment extends Fragment {
                     }
                 }
                 data.append("https://www.google.com/maps/search/?api=1&query=" + Uri.encode(addr));
+                break;
+            case 7: // Beneficiary Bank
+                String selectedBank = "";
+                String accountNumber = "";
+                String nameBank = "";
+
+                for (int i = 0; i < uniqueFieldsContainer.getChildCount(); i++) {
+                    View view = uniqueFieldsContainer.getChildAt(i);
+
+                    if (view instanceof Spinner) {
+                        Spinner spinner = (Spinner) view;
+                        selectedBank = spinner.getSelectedItem().toString();
+                    } else if (view instanceof EditText) {
+                        EditText editText = (EditText) view;
+                        if ("Beneficiary Account Number".equals(editText.getHint().toString())) {
+                            accountNumber = editText.getText().toString();
+                        } else if ("Name".equals(editText.getHint().toString())) {
+                            nameBank = editText.getText().toString();
+                        }
+                    }
+                }
+                data.append(generateVietQRCode(selectedBank, accountNumber, nameBank));
                 break;
         }
         return data.toString();
