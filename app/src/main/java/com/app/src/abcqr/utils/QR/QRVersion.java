@@ -1,4 +1,6 @@
-package com.app.src.abcqr.utils.generate;
+package com.app.src.abcqr.utils.QR;
+
+import android.util.Pair;
 
 public class QRVersion {
     public enum ErrorCorrectionLevel {
@@ -13,17 +15,17 @@ public class QRVersion {
         private final int totalDataCodewords;
         private final int ecCodewordsPerBlock;
         private final int numBlocksGroup1;
-        private final int numDataCodewordsGroup1;
+        private final int numDataCodewordsInGroup1Block;
         private final int numBlocksGroup2;
-        private final int numDataCodewordsGroup2;
+        private final int numDataCodewordsInGroup2Block;
 
-        public VersionECInfo(int totalDataCodewords, int ecCodewordsPerBlock, int numBlocksGroup1, int numDataCodewordsGroup1, int numBlocksGroup2, int numDataCodewordsGroup2) {
+        public VersionECInfo(int totalDataCodewords, int ecCodewordsPerBlock, int numBlocksGroup1, int numDataCodewordsInGroup1Block, int numBlocksGroup2, int numDataCodewordsInGroup2Block) {
             this.totalDataCodewords = totalDataCodewords;
             this.ecCodewordsPerBlock = ecCodewordsPerBlock;
             this.numBlocksGroup1 = numBlocksGroup1;
-            this.numDataCodewordsGroup1 = numDataCodewordsGroup1;
+            this.numDataCodewordsInGroup1Block = numDataCodewordsInGroup1Block;
             this.numBlocksGroup2 = numBlocksGroup2;
-            this.numDataCodewordsGroup2 = numDataCodewordsGroup2;
+            this.numDataCodewordsInGroup2Block = numDataCodewordsInGroup2Block;
         }
 
         public int getTotalDataCodewords() {
@@ -38,16 +40,16 @@ public class QRVersion {
             return numBlocksGroup1;
         }
 
-        public int getNumDataCodewordsGroup1() {
-            return numDataCodewordsGroup1;
+        public int getNumDataCodewordsInGroup1Block() {
+            return numDataCodewordsInGroup1Block;
         }
 
         public int getNumBlocksGroup2() {
             return numBlocksGroup2;
         }
 
-        public int getNumDataCodewordsGroup2() {
-            return numDataCodewordsGroup2;
+        public int getNumDataCodewordsInGroup2Block() {
+            return numDataCodewordsInGroup2Block;
         }
 
         @Override
@@ -56,9 +58,9 @@ public class QRVersion {
                     "totalDataCodewords=" + totalDataCodewords +
                     ", ecCodewordsPerBlock=" + ecCodewordsPerBlock +
                     ", numBlocksGroup1=" + numBlocksGroup1 +
-                    ", numDataCodewordsGroup1=" + numDataCodewordsGroup1 +
+                    ", numDataCodewordsInGroup1Block=" + numDataCodewordsInGroup1Block +
                     ", numBlocksGroup2=" + numBlocksGroup2 +
-                    ", numDataCodewordsGroup2=" + numDataCodewordsGroup2 +
+                    ", numDataCodewordsInGroup2Block=" + numDataCodewordsInGroup2Block +
                     '}';
         }
     }
@@ -354,4 +356,19 @@ public class QRVersion {
     public static String getVersionString(int version) {
         return version >= 7 ? VERSION_INFORMATION_STRINGS[version - 7] : "";
     }
+    public static Pair<Boolean, int[]> decodeFormatInfo(String formatBits){
+        int[] formatAndMask = new int[2];
+        for(int i = 0; i < 4; i++){
+            for(int j = 0 ; j < 8; j++){
+                if(formatBits.equals(FORMAT_INFORMATION_STRINGS[i][j])){
+                    formatAndMask[0] = i;
+                    formatAndMask[1] = j;
+                    return new Pair<>(true, formatAndMask);
+                }
+            }
+        }
+        return new Pair<>(false, formatAndMask);
+    }
+//    public static int decodeVersionInfo(String versionBits){
+//    }
 }

@@ -2,7 +2,7 @@ package com.app.src.abcqr.ui.main.fragment;
 
 
 
-import static com.app.src.abcqr.utils.generate.QRVersion.getVersionCapacity;
+import static com.app.src.abcqr.utils.QR.QRVersion.getVersionCapacity;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -14,8 +14,8 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.app.src.abcqr.utils.generate.QRCodeFacade;
-import com.app.src.abcqr.utils.generate.QRVersion;
+import com.app.src.abcqr.utils.QR.generate.QRCodeEncodingFacade;
+import com.app.src.abcqr.utils.QR.QRVersion;
 
 
 public class GenerateViewModel extends ViewModel {
@@ -29,8 +29,8 @@ public class GenerateViewModel extends ViewModel {
     public LiveData<Bitmap> generateQRCode(String data, QRVersion.ErrorCorrectionLevel errorCorrectionLevel, int blockSize) {
 
         int version = getVersionCapacity(data.length(), errorCorrectionLevel);
-        QRCodeFacade qrCodeFacade = new QRCodeFacade(version, errorCorrectionLevel);
-        int[][] matrix = qrCodeFacade.generateQRCode(data);
+        QRCodeEncodingFacade qrCodeEncodingFacade = new QRCodeEncodingFacade(version, errorCorrectionLevel);
+        int[][] matrix = qrCodeEncodingFacade.generateQRCode(data);
         int size = matrix.length;
         int imageSize = size * blockSize;
         Bitmap bitmap = Bitmap.createBitmap(imageSize, imageSize, Bitmap.Config.RGB_565);

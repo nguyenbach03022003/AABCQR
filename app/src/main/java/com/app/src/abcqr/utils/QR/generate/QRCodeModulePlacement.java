@@ -1,7 +1,9 @@
-package com.app.src.abcqr.utils.generate;
+package com.app.src.abcqr.utils.QR.generate;
 
-import static com.app.src.abcqr.utils.generate.QRVersion.getFormatInformationString;
-import static com.app.src.abcqr.utils.generate.QRVersion.getVersionString;
+import static com.app.src.abcqr.utils.QR.QRVersion.getFormatInformationString;
+import static com.app.src.abcqr.utils.QR.QRVersion.getVersionString;
+
+import com.app.src.abcqr.utils.QR.QRVersion;
 
 public class QRCodeModulePlacement {
 

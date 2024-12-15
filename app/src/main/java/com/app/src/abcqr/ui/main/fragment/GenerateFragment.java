@@ -17,7 +17,6 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
 
 import androidx.annotation.NonNull;
@@ -27,11 +26,9 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
 
-import com.app.src.abcqr.ui.main.fragment.QRCodeDialogFragment;
-import com.app.src.abcqr.R;
 import com.app.src.abcqr.databinding.FragmentGenerateBinding;
-import com.app.src.abcqr.utils.generate.QRVersion;
-import com.app.src.abcqr.utils.VietQRCodeGenerator;
+import com.app.src.abcqr.utils.QR.QRVersion;
+
 import java.io.File;
 import java.io.FileOutputStream;
 

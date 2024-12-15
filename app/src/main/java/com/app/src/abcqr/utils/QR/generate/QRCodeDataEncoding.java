@@ -1,9 +1,11 @@
-    package com.app.src.abcqr.utils.generate;
+    package com.app.src.abcqr.utils.QR.generate;
 
     import java.nio.charset.StandardCharsets;
 
-    import static com.app.src.abcqr.utils.generate.QRVersion.ErrorCorrectionLevel;
-    import static com.app.src.abcqr.utils.generate.QRVersion.getVersionECInfo;
+    import static com.app.src.abcqr.utils.QR.QRVersion.ErrorCorrectionLevel;
+    import static com.app.src.abcqr.utils.QR.QRVersion.getVersionECInfo;
+
+    import com.app.src.abcqr.utils.QR.QRVersion;
 
 
     public class QRCodeDataEncoding {

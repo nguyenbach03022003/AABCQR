@@ -1,21 +1,24 @@
-package com.app.src.abcqr.utils.generate;
+package com.app.src.abcqr.utils.QR.generate;
 
-import static com.app.src.abcqr.utils.generate.QRErrorCorrectionEncoding.generateErrorCorrectionCodewords;
-import static com.app.src.abcqr.utils.generate.QRErrorCorrectionEncoding.interleaveAndConvertToBinary;
-import static com.app.src.abcqr.utils.generate.QRVersion.getVersionECInfo;
+import static com.app.src.abcqr.utils.QR.generate.QRErrorCorrection.generateErrorCorrectionCodewords;
+import static com.app.src.abcqr.utils.QR.generate.QRErrorCorrection.interleaveAndConvertToBinary;
+import static com.app.src.abcqr.utils.QR.QRVersion.getVersionECInfo;
+
+import com.app.src.abcqr.utils.QR.QRVersion;
+import com.app.src.abcqr.utils.QR.scanner.QRCodeDecoder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 
 
-public class QRCodeFacade {
+public class QRCodeEncodingFacade {
 
     private QRCodeDataEncoding dataEncoding;
     private QRCodeModulePlacement modulePlacement;
     private int version;
     private QRVersion.ErrorCorrectionLevel errorCorrectionLevel;
 
-    public QRCodeFacade(int version, QRVersion.ErrorCorrectionLevel errorCorrectionLevel) {
+    public QRCodeEncodingFacade(int version, QRVersion.ErrorCorrectionLevel errorCorrectionLevel) {
         this.version = version;
         this.errorCorrectionLevel = errorCorrectionLevel;
     }
@@ -36,7 +39,15 @@ public class QRCodeFacade {
         String structuralFinalMessage = interleaveAndConvertToBinary(message, version, vi);
         System.out.println("structuralFinalMessage " + structuralFinalMessage);
 
-        modulePlacement = new QRCodeModulePlacement(version, errorCorrectionLevel, structuralFinalMessage);
+//        StringBuffer string = new StringBuffer(structuralFinalMessage);
+        //Uncomment to deform the message
+//        for(int i = 1; i < 50;i++){
+//            string.setCharAt(i, '1');
+//        }
+
+        modulePlacement = new QRCodeModulePlacement(version, errorCorrectionLevel, structuralFinalMessage.toString());
+//        QRCodeDecoder decoder = new QRCodeDecoder(modulePlacement.getMatrix());
+//        decoder.decode();
         return modulePlacement.getMatrix();
     }
 
