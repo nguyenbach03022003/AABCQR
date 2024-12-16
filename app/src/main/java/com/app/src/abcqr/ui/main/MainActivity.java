@@ -15,6 +15,9 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
 
+    static {
+        System.loadLibrary("opencv_java4"); // Or "opencv_java3" depending on your OpenCV version
+    }
     private ActivityMainBinding binding;
 
     @Override

@@ -16,6 +16,8 @@ import com.app.src.abcqr.data.model.MyQR;
 import com.app.src.abcqr.data.model.MyQRDao;
 import com.app.src.abcqr.data.repository.MyQRDatabase;
 import com.app.src.abcqr.data.repository.MyQRRepository;
+import com.app.src.abcqr.utils.QR.scanner.QRCodeDecoder;
+import com.app.src.abcqr.utils.QR.scanner.Scanner;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.LuminanceSource;
 import com.google.zxing.MultiFormatReader;
@@ -54,15 +56,16 @@ public class ScanViewModel extends AndroidViewModel {
     }
     public LiveData<String> decodeQRCode(Bitmap bitmap) {
         try {
-            int[] intArray = new int[bitmap.getWidth() * bitmap.getHeight()];
-            bitmap.getPixels(intArray, 0, bitmap.getWidth(), 0, 0, bitmap.getWidth(), bitmap.getHeight());
+//            int[] intArray = new int[bitmap.getWidth() * bitmap.getHeight()];
+//            bitmap.getPixels(intArray, 0, bitmap.getWidth(), 0, 0, bitmap.getWidth(), bitmap.getHeight());
+//
+//            LuminanceSource source = new RGBLuminanceSource(bitmap.getWidth(), bitmap.getHeight(), intArray);
+//            BinaryBitmap binaryBitmap = new BinaryBitmap(new HybridBinarizer(source));
 
-            LuminanceSource source = new RGBLuminanceSource(bitmap.getWidth(), bitmap.getHeight(), intArray);
-            BinaryBitmap binaryBitmap = new BinaryBitmap(new HybridBinarizer(source));
-
-            Reader reader = new MultiFormatReader();
-            Result result = reader.decode(binaryBitmap);
-            qrCodeResult.setValue(result.getText());
+            int[][] qrModuleMatrix = Scanner.getQRMatrix(bitmap);
+            QRCodeDecoder decoder = new QRCodeDecoder(qrModuleMatrix);
+            decoder.decode();
+            qrCodeResult.setValue(decoder.getFinalMessage());
         } catch(Exception e){
             qrCodeResult.setValue("Loi");
         }

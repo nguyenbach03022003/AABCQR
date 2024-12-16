@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "abcqr"
 include(":app")
- 
+include(":openCV4_10")
