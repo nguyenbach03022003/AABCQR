@@ -9,6 +9,8 @@ import java.io.File;
 
 //import java.awt.*;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 //import java.awt.geom.AffineTransform;
 
 //import javax.swing.*;
@@ -22,6 +24,16 @@ import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
+
+import org.opencv.android.Utils;
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint2f;
+import org.opencv.core.Point;
+import org.opencv.core.Scalar;
+import org.opencv.core.Size;
+import org.opencv.imgproc.Imgproc;
 
 //import androidx.ink.geometry.*;
 
@@ -44,7 +56,7 @@ public class QRTransform {
 
     private static Bitmap affineBitmap;
 
-    public static Bitmap getAffine() {
+    public static Bitmap getAffineBitmap() {
         return affineBitmap;
     }
 
@@ -462,63 +474,41 @@ public class QRTransform {
         return false;
     }
 
-    /**
-     * detectFilter: ham xu ly viec tim cac Eye tron Qr va tim affine
-     * Transformation Matrix
-     *
-     * @param binaryMatrix: ma tran anh binary dau vao
-     * @param width:        chieu ngang buc anh
-     * @param height:       chieu doc buc anh
-     */
-    private static void detectFilter(int[][] binaryMatrix, int width, int height) {
+    private static void detectFilter(int[][] blackWhiteMatrix, int width, int height) {
         countEye = 0;                                       // Dem so toa do mat phat hien duoc
         matrixDotFinderPattern = new int[width][height];    // Ma tran luu lai cac pixel nao da duoc duyet
         xEye = new int[width * height];                     // mang luu toa do cac con mat tim duoc
         yEye = new int[width * height];
-        /*
-        Duyet toan bo buc anh
-        Neu tim duoc vi tri pixel nao co finder pattern nam ngang
-        -> kiem tra vi tri do co finder pattern nam doc khong va do dai ca 2 finder pattern co bang nhau khong va da duoc duyet chua
-                -> luu lai gia tri vi tri do va tang so mat dem duoc
-         */
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-                //if (x > 238 && x < 350 && y < 825 && y > 710) {
-                if (checkFinderPattern2(binaryMatrix, x, y)) {
-                    if (checkFinderPatternLength(binaryMatrix, x, y) && matrixDotFinderPattern[x][y] == 0 && checkFinderPattern1(binaryMatrix, x, y)) {
+                if (checkFinderPattern2(blackWhiteMatrix, x, y)) {
+                    if (checkFinderPatternLength(blackWhiteMatrix, x, y) && matrixDotFinderPattern[x][y] == 0 && checkFinderPattern1(blackWhiteMatrix, x, y)) {
                         xEye[countEye] = x;                             // Luu hang
                         yEye[countEye] = y;                             // Luu cot
                         countEye++;                                     // Tang so luong mat dem duoc
                         matrixDotFinderPattern[x][y] = 1;
-                        //}
                     }
                 }
             }
         }
-        for (int i = 0; i < countEye; i++) {
-            System.out.println("i: " + i + ", x=" + xEye[i] + ", y=" + yEye[i]);
-        }
-
-        /*
-        Tim ra 3 toa do mat phu hop
-        neu tim duoc 3 con mat thoa man tao thanh 1 tam giac vuong luu lai vao bien de xu ly
-        lua chon Cap mat dau tien de toi uu ham tim
-         */
+//        for (int i = 0; i < countEye; i++) {
+//            System.out.println("i: " + i + ", x=" + xEye[i] + ", y=" + yEye[i]);
+//        }
         boolean found3Eye = false;
         for (int i = 0; i < countEye - 2; i++) {
-            if (found3Eye) {        // Neu da tim thay 3 Eye ngat viec tim
+            if (found3Eye) {
                 break;
             }
             for (int j = i + 1; j < countEye - 1; j++) {
-                if (found3Eye) {    // Neu da tim thay 3 Eye ngat viec tim
+                if (found3Eye) {
                     break;
                 }
                 for (int k = j + 1; k < countEye; k++) {
-                    if (found3Eye) {    // Neu da tim thay 3 Eye ngat viec tim
+                    if (found3Eye) {
                         break;
                     }
-                    found3Eye = check3Eye(i, j, k);         // Kiem tra 3 mat co tao thanh tam giac vuong hay khong
-                    if (found3Eye) {                        // Neu co thi luu lai toa do 3 con mat
+                    found3Eye = check3Eye(i, j, k);
+                    if (found3Eye) {
                         xEye1 = xEye[i];
                         xEye2 = xEye[j];
                         xEye3 = xEye[k];
@@ -529,57 +519,34 @@ public class QRTransform {
                 }
             }
         }
-        if (!found3Eye) {   // Neu khong tim thay 3 mat phu hop thi anh khong chua QR hoac qr bi loi
+        if (!found3Eye) {
             System.out.println("Cant find QR, QR corrupted");
             return;
         }
-        /*
-        Chinh sua lai toa do 3 con mat cho phu hop voi cau truc
-         */
         correctingCoordinate();
-        /*
-        Tim diem co dinh thu 4 cua QR su dung toa do 3 mat da co
-         */
-        find4Eye();
 
-        /*
-        Tim Affine Transform matrix
-        Khoi tao ma tran toa do nguon va toa do dich
-         */
-        double[][] sourcePoints = {
-                {xEye1, yEye1},
-                {xEye2, yEye2},
-                {xEye3, yEye3}
-        };
-
-        double eyeWidth = calEyeWidth(binaryMatrix, (int) xEye1, (int) yEye1); // tinh do dai chieu ngang cua 1 con mat
+        double eyeWidth = calEyeWidth(blackWhiteMatrix, (int) xEye1, (int) yEye1); // tinh do dai chieu ngang cua 1 con mat
         System.out.println("EyeWidth= " + eyeWidth);
         double disEye1 = calculateDistance(xEye1, yEye1, xEye2, yEye2);        // Tinh khoang cach giua 2 mat
         offsetEye = eyeWidth / 2;                                              // Do lech giua toa do trung tap va goc (0,0) QR sau khi chuyen doi
         offsetEye = Math.round(offsetEye);                                     // Lam tron double
         qrWidth = disEye1 + eyeWidth - 1;                                          // Chieu gai QR = Khoang cach 2 mat + chieu rong 1 mat
-        blockSize = (int) Math.round(eyeWidth) / 7 - 1;                            // Chieu dai va rong 1 module dua tren chieu rong 1 mat
-        qrWidth = Math.round(qrWidth);                                         // Lam tron 1 mat
-        /*
-        Ma tran diem dich su dung boi affine transformation
-         */
-        double[][] destinationPoints = {
-                {offsetEye, offsetEye},
-                {qrWidth - offsetEye, offsetEye},
-                {offsetEye, qrWidth - offsetEye}
-        };
-        //System.out.println(Math.round(eyeWidth) + "," + Math.round(eyeWidth + disEye1));
-        /*
-        Tim ma tran Affine Transformation Matrix tu diem dau va diem dich
-         */
-        transformMatrix = findAffineTransformation(sourcePoints, destinationPoints);
-        System.out.println("Affine Transformation Matrix:");          // In Ma tran Affine transformation matrix
-        for (double[] row : transformMatrix) {
-            for (double value : row) {
-                System.out.printf("%.3f ", value);
-            }
-            System.out.println();
-        }
+        blockSize = (int) Math.round(eyeWidth) / 7;                            // Chieu dai va rong 1 module dua tren chieu rong 1 mat
+        qrWidth = Math.round(qrWidth);
+
+        Mat affMatrix = computeAffineTransform(new Point(yEye1, xEye1), new Point(yEye2, xEye2), new Point(yEye3, xEye3),
+                new Point(offsetEye,offsetEye), new Point(offsetEye, qrWidth - offsetEye), new Point(qrWidth - offsetEye, offsetEye));
+        Mat srcBWMat = bwArrayToMat(blackWhiteMatrix);
+        Mat dstBWMat = new Mat();
+        Size size = new Size(qrWidth * 1.25, qrWidth * 1.25);
+        Imgproc.warpAffine(srcBWMat, dstBWMat, affMatrix,size,
+                Imgproc.INTER_LINEAR, Core.BORDER_CONSTANT, new Scalar(0, 0, 0, 0));
+        affineBitmap = Bitmap.createBitmap(
+                (int) (qrWidth * 1.25),
+                (int) (qrWidth * 1.25),
+                Bitmap.Config.ARGB_8888
+        );
+        Utils.matToBitmap(dstBWMat, affineBitmap);
     }
 
     /**
@@ -703,16 +670,11 @@ public class QRTransform {
         System.out.println("xEye2= " + xEye2 + " ,yEye2= " + yEye2);
         System.out.println("xEye3= " + xEye3 + " ,yEye3= " + yEye3);
 
-        // assume start at Eye3 go to Eye1(vector Eye31) and end at Eye2 (vector Eye12)
         double xEye31 = (xEye1 - xEye3);
         double yEye31 = (yEye1 - yEye3);
-        //System.out.println("xEye31= " + xEye31 + " ,yEye31= " + yEye31);
         double xEye12 = (xEye1 - xEye2);
         double yEye12 = (yEye1 - yEye2);
-        //System.out.println("xEye12= " + xEye12 + " ,yEye12= " + yEye12);
-        // Cross product of 2 vector Eye31 and Eye12
         double crossProduct = (xEye31 * yEye12) - (xEye12 * yEye31);
-        //System.out.println("CrossProduct= " + crossProduct);
         if (crossProduct > 0) { // Direction is counter-clockwise -> swap Eye2 and Eye3
             double tmpx = xEye2;
             double tmpy = yEye2;
@@ -730,146 +692,7 @@ public class QRTransform {
         System.out.println("xEye3= " + xEye3 + " ,yEye3= " + yEye3);
     }
 
-    /**
-     * findAffineTransformation: tim ma tran affine transformation matrix
-     *
-     * @param sourcePoints:      ma tran diem dau
-     * @param destinationPoints: ma tran diem dich
-     * @return double[][]: ma tran 2x3 ma tran Affine transformation
-     */
-    public static double[][] findAffineTransformation(
-            double[][] sourcePoints, double[][] destinationPoints) {
-        System.out.println("StattFind");
-        if (sourcePoints.length != 3 || destinationPoints.length != 3) {
-            throw new IllegalArgumentException("Exactly 3 source and 3 destination points are required.");
-        }
-        // Construct the augmented matrix for the equations
-        double[][] matrix = new double[6][7];
-        for (int i = 0; i < 3; i++) {
-            double x = sourcePoints[i][0];
-            double y = sourcePoints[i][1];
-            double xPrime = destinationPoints[i][0];
-            double yPrime = destinationPoints[i][1];
 
-            // Equation for x'
-            matrix[2 * i][0] = x;
-            matrix[2 * i][1] = y;
-            matrix[2 * i][2] = 1;
-            matrix[2 * i][3] = 0;
-            matrix[2 * i][4] = 0;
-            matrix[2 * i][5] = 0;
-            matrix[2 * i][6] = xPrime;
-
-            // Equation for y'
-            matrix[2 * i + 1][0] = 0;
-            matrix[2 * i + 1][1] = 0;
-            matrix[2 * i + 1][2] = 0;
-            matrix[2 * i + 1][3] = x;
-            matrix[2 * i + 1][4] = y;
-            matrix[2 * i + 1][5] = 1;
-            matrix[2 * i + 1][6] = yPrime;
-        }
-        // GaussJordan method
-        gaussJordan(matrix);
-        return new double[][]{
-                {matrix[0][6], matrix[1][6], matrix[2][6]},
-                {matrix[3][6], matrix[4][6], matrix[5][6]}
-        };
-    }
-
-    /**
-     * gaussJordan: ham xu ly gauss Jordan ma tran
-     *
-     * @param matrix: tra lai ma tran da xu ly
-     */
-    private static void gaussJordan(double[][] matrix) {
-        int rows = matrix.length;
-        int cols = matrix[0].length;
-
-        for (int i = 0; i < rows; i++) {
-            // Find the maximum element in the current column for pivoting
-            int maxRow = i;
-            for (int k = i + 1; k < rows; k++) {
-                if (Math.abs(matrix[k][i]) > Math.abs(matrix[maxRow][i])) {
-                    maxRow = k;
-                }
-            }
-
-            // Swap rows to bring the maximum element to the diagonal
-            double[] temp = matrix[i];
-            matrix[i] = matrix[maxRow];
-            matrix[maxRow] = temp;
-
-            // Check for singular matrix
-            if (Math.abs(matrix[i][i]) < 1e-9) {
-                throw new IllegalArgumentException("Matrix is singular or nearly singular.");
-            }
-
-            // Make the diagonal element 1
-            double diagElement = matrix[i][i];
-            for (int j = 0; j < cols; j++) {
-                matrix[i][j] /= diagElement;
-            }
-
-            // Make the other elements in the column 0
-            for (int k = 0; k < rows; k++) {
-                if (k != i) {
-                    double factor = matrix[k][i];
-                    for (int j = 0; j < cols; j++) {
-                        matrix[k][j] -= factor * matrix[i][j];
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * transformImage: Ham bien doi anh voi ma tran Affine transformation
-     *
-     * @param image: anh dau vao
-     * @return BufferedImage: anh da duoc bien doi
-     */
-    public static Bitmap transformImage(Bitmap image) {
-
-        // Create a new BufferedImage to hold the transformed image
-        int width = image.getWidth();
-        int height = image.getHeight();
-        //Bitmap transformedImage = new Bitmap(width, height);
-        // Get the Graphics2D object
-        //Graphics2D g2d = transformedImage.createGraphics();
-        Matrix affineMatrix = new Matrix();
-        // Create an AffineTransform
-//        AffineTransform transform = new AffineTransform(
-//                transformMatrix[0][0], // a
-//                transformMatrix[1][0], // c
-//                transformMatrix[0][1], // b
-//                transformMatrix[1][1], // d
-//                transformMatrix[0][2], // tx
-//                transformMatrix[1][2] // ty
-//        );
-        affineMatrix.setValues(new float[]{
-                (float) transformMatrix[0][0], // a
-                (float) transformMatrix[0][1], // b
-                (float) transformMatrix[0][2], // tx
-                (float) transformMatrix[1][0], // c
-                (float) transformMatrix[1][1], // d
-                (float) transformMatrix[1][2], // ty
-                0, 0, 1
-        });
-        /*
-         Apply transformation matrix
-         */
-//        g2d.setTransform(transform);
-//        //transform.scale(0.9, 0.9);
-//        // g2d.setTransform(transform);
-//        //g2d.drawImage(image, (int) (finderPatternLengthHori), (int) (finderPatternLengthHori), null);
-//        g2d.drawImage(image, 0, 0, null);
-//        g2d.dispose();
-
-        Bitmap transformedImage = Bitmap.createBitmap(image, 0, 0, image.getWidth(), image.getHeight(), affineMatrix, true);
-
-        return transformedImage;
-    }
 
     /**
      * drawImageFromBinaryMatrix: tao anh tu ma tran binary
@@ -987,138 +810,42 @@ public class QRTransform {
      * @return int[][]: ma tran binary Tu anh gray
      */
     public static int[][] convertToBinaryMatrix(Bitmap grayImage) {
-        int height = grayImage.getHeight();
         int width = grayImage.getWidth();
-        int[][] binaryMatrix = new int[width][height];
+        int height = grayImage.getHeight();
 
-        for (int startX = 0; startX < width; startX += BLOCK_SIZE) {
-            for (int startY = 0; startY < height; startY += BLOCK_SIZE) {
-                int threshold = calculateBlockThreshold(grayImage, startX, startY, BLOCK_SIZE);
+        int[][] binaryMatrix = new int[height][width]; // [row][column] => [y][x]
 
-                for (int x = startX; x < startX + BLOCK_SIZE && x < width; x++) {
-                    for (int y = startY; y < startY + BLOCK_SIZE && y < height; y++) {
-                        int gray = Color.red(grayImage.getPixel(x, y));
-                        binaryMatrix[x][y] = (gray < threshold) ? 0 : 1;
-                    }
-                }
+        // Iterate through each pixel
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                // Get pixel color
+                int pixel = grayImage.getPixel(x, y);
+
+                // Convert to grayscale
+                int grayscale = getGrayscale(pixel);
+
+                // Apply threshold
+                binaryMatrix[y][x] = (grayscale >= 128) ? 1 : 0;
             }
         }
+
         return binaryMatrix;
+
+    }
+    private static int getGrayscale(int pixel) {
+        int red = Color.red(pixel);
+        int green = Color.green(pixel);
+        int blue = Color.blue(pixel);
+
+        // Calculate grayscale using luminosity method
+        // Grayscale = 0.21 R + 0.72 G + 0.07 B
+        // This method accounts for human perception of different colors
+        return (int) (0.21 * red + 0.72 * green + 0.07 * blue);
     }
 //    public static int[][] convertToQRMatrix(BufferedImage inputImage,int offset,int QRLength){
 //
 //    }
 
-    /**
-     * Tim gia tri diem thu 4 trong ma tran dua vao 3 toa do Eye da tim duoc
-     */
-    public static void find4Eye() {
-        double mx = (xEye2 + xEye3) / 2;
-        double my = (yEye2 + yEye3) / 2;
-        xEye4 = 2 * mx - xEye1;
-        yEye4 = 2 * my - yEye1;
-    }
-
-    /*
-    Find affine 4 point
-     */
-    public static double[][] findAffineMatrix(double[][] sourcePoints, double[][] destinationPoints) {
-        int n = 4; // Number of points
-        double[][] A = new double[2 * n][6];
-        double[] B = new double[2 * n];
-
-        // Construct A and B matrices
-        for (int i = 0; i < n; i++) {
-            double x = sourcePoints[i][0];
-            double y = sourcePoints[i][1];
-            double xPrime = destinationPoints[i][0];
-            double yPrime = destinationPoints[i][1];
-
-            A[2 * i][0] = x;
-            A[2 * i][1] = y;
-            A[2 * i][2] = 1;
-            A[2 * i][3] = 0;
-            A[2 * i][4] = 0;
-            A[2 * i][5] = 0;
-            B[2 * i] = xPrime;
-
-            A[2 * i + 1][0] = 0;
-            A[2 * i + 1][1] = 0;
-            A[2 * i + 1][2] = 0;
-            A[2 * i + 1][3] = x;
-            A[2 * i + 1][4] = y;
-            A[2 * i + 1][5] = 1;
-            B[2 * i + 1] = yPrime;
-        }
-
-        // Solve for T using least squares
-        double[] T = solveLeastSquares(A, B);
-
-        // Reshape T into a 2x3 matrix
-        return new double[][]{
-                {T[0], T[1], T[2]},
-                {T[3], T[4], T[5]}
-        };
-    }
-
-    private static double[] solveLeastSquares(double[][] A, double[] B) {
-        int rows = A.length;
-        int cols = A[0].length;
-
-        // Compute A^T A
-        double[][] ATA = new double[cols][cols];
-        for (int i = 0; i < cols; i++) {
-            for (int j = 0; j < cols; j++) {
-                for (int k = 0; k < rows; k++) {
-                    ATA[i][j] += A[k][i] * A[k][j];
-                }
-            }
-        }
-
-        // Compute A^T B
-        double[] ATB = new double[cols];
-        for (int i = 0; i < cols; i++) {
-            for (int k = 0; k < rows; k++) {
-                ATB[i] += A[k][i] * B[k];
-            }
-        }
-
-        // Solve (ATA) * T = ATB using Gaussian elimination
-        return gaussianElimination(ATA, ATB);
-    }
-
-    private static double[] gaussianElimination(double[][] A, double[] B) {
-        int n = A.length;
-
-        for (int i = 0; i < n; i++) {
-            // Make the diagonal element 1
-            double factor = A[i][i];
-            for (int j = 0; j < n; j++) {
-                A[i][j] /= factor;
-            }
-            B[i] /= factor;
-
-            // Eliminate the current column for all rows below
-            for (int k = i + 1; k < n; k++) {
-                double factor2 = A[k][i];
-                for (int j = 0; j < n; j++) {
-                    A[k][j] -= factor2 * A[i][j];
-                }
-                B[k] -= factor2 * B[i];
-            }
-        }
-
-        // Back substitution
-        double[] T = new double[n];
-        for (int i = n - 1; i >= 0; i--) {
-            T[i] = B[i];
-            for (int j = i + 1; j < n; j++) {
-                T[i] -= A[i][j] * T[j];
-            }
-        }
-
-        return T;
-    }
 
     /**
      * convertToBlockMatrix: Ham chuyen tu anh sau khi xu ly qua Affine
@@ -1128,73 +855,117 @@ public class QRTransform {
      * @param width:       chieu dai anh
      * @param height       : chieu rong anh
      */
-    public static void convertToBlockMatrix(int[][] inputMatrix, int[][] outputMatrix, int width, int height, int offset, int blockSize, int qrWidth, int qrSize) {
-        // Prefix Sum binary Image
-        double errorRate = 0.2;
-        int[][] prefixSum = new int[width][height];
-        //int matrixWidth = (int) qrWidth / blockSize;
-
-        for (int x = 1; x < width; x++) {
-            for (int y = 1; y < height; y++) {
-                prefixSum[x][y] = prefixSum[x - 1][y] + prefixSum[x][y - 1] - prefixSum[x - 1][y - 1] + inputMatrix[x][y];
+    public static void convertToBlockMatrix(int[][] inputMatrix, int[][] outputMatrix, int width, int height, int offset, int blockSize, int qrSize) {
+        int[] verticalLines = new int[qrSize + 1];
+        int[] horizontalLines = new int[qrSize + 1];
+        verticalLines[0] = offset;
+        horizontalLines[0] = offset;
+        int currentVerticalLinesIndex = 1;
+        int currentHorizontalLinesIndex = 1;
+        for(int y = offset + blockSize / 2 ; y < width - 1; y++){
+            int edgeCount = 0;
+            for(int x = offset + blockSize / 2; x < height - 1; x++){
+                if(x > offset + blockSize * 8 && x < offset + blockSize * (qrSize - 8) && y > offset + blockSize * 8 && y < offset + blockSize * (qrSize - 8))
+                    continue;
+                edgeCount += Math.abs(inputMatrix[y+1][x] - inputMatrix[y][x]);
             }
+            if(edgeCount >= Math.min(blockSize * (qrSize - 20.5), qrWidth /30) && currentHorizontalLinesIndex <= qrSize){
+                horizontalLines[currentHorizontalLinesIndex++] = y+1;
+                y+= blockSize / 2;
+            }
+            if(currentHorizontalLinesIndex >= qrSize + 1) break;
         }
-        // Tinh tong cua cac o dua tren mang cong don
-        //System.out.println("Math.round(qrWidth / blockSize)=" + Math.round(qrWidth / blockSize));
-        for (int x = 0; x < qrSize; x++) {
-            for (int y = 0; y < qrSize; y++) {
-                int totalWhite = prefixSum[(x + 1) * blockSize + offset][(y + 1) * blockSize + offset] - prefixSum[x * blockSize + offset][(y + 1) * blockSize + offset] - prefixSum[(x + 1) * blockSize + offset][y * blockSize + offset] + prefixSum[x * blockSize + offset][y * blockSize + offset];
-                if (totalWhite * 2 > blockSize * blockSize) {
-                    outputMatrix[x][y] = 1;
+        for(int x = offset + blockSize / 2 ; x < width - 1; x++){
+            int edgeCount = 0;
+            for(int y = offset + blockSize / 2; y < height - 1; y++){
+                if(y > offset + blockSize * 8 && y < offset + blockSize * (qrSize - 8) && x > offset + blockSize * 8 && x < offset + blockSize * (qrSize - 8))
+                    continue;
+
+                edgeCount += Math.abs(inputMatrix[y][x+1] - inputMatrix[y][x]);
+            }
+            if(edgeCount >= Math.min(blockSize * (qrSize - 20.5), qrWidth /20) && currentVerticalLinesIndex <= qrSize){
+                verticalLines[currentVerticalLinesIndex++] = x+1;
+                x+= blockSize / 2;
+            }
+            if(currentVerticalLinesIndex >= qrSize + 1) break;
+        }
+        int a = 0;
+        for(int y = 0; y < qrSize; y++){
+            int yStart = horizontalLines[y];
+            int yEnd = horizontalLines[y+1];
+            for(int x = 0; x < qrSize; x++){
+                int xStart = verticalLines[x];
+                int xEnd = verticalLines[x+1];
+                int totalWhite = 0;
+                for(int i = yStart; i < yEnd; i++){
+                    for(int j = xStart; j < xEnd; j++){
+                        if(inputMatrix[i][j] == 0)
+                            totalWhite++;
+                    }
+                }
+                if (totalWhite > (yEnd - yStart) * (xEnd - xStart) /2) {
+                    outputMatrix[y][x] = 1;
                 } else {
-                    outputMatrix[x][y] = 0;
+                    outputMatrix[y][x] = 0;
                 }
             }
         }
     }
 
     public static boolean isAlignPatternMiddle(int[][] inputMatrix, int x, int y, int width, int height) {
-        int i = x;
-        int leftCount = 0;
-        int rightCount = 0;
-        int upCount = 0;
-        int downCount = 0;
-        double errorRate = 0.25;
-        while (i > 0 && inputMatrix[i][y] == 0) {
-            rightCount++;
-            i++;
+        try {
+            int i = x;
+            int leftCount = 0;
+            int rightCount = 0;
+            int upCount = 0;
+            int downCount = 0;
+            double errorRate = 0.25;
+
+            while (i > 0 && inputMatrix[i][y] == 0) {
+                rightCount++;
+                i++;
+                if(i > inputMatrix.length -1)
+                    break;
+            }
+            if (i >= width || rightCount == 0) {
+                return false;
+            }
+            i = x;
+            while (i >= 0 && inputMatrix[i][y] == 0) {
+                leftCount++;
+                i--;
+            }
+            if (i < 0 || leftCount == 0) {
+                return false;
+            }
+            i = y;
+            while (i >= 0 && inputMatrix[x][i] == 0) {
+                downCount++;
+                i++;
+                if(i > inputMatrix[0].length - 1) break;
+            }
+            if (i >= width || downCount == 0) {
+                return false;
+            }
+            i = y;
+            while (i >= 0 && inputMatrix[x][i] == 0) {
+                upCount++;
+                i--;
+            }
+            if (i < 0 || upCount == 0) {
+                return false;
+            }
+            boolean ans = percentageDif(leftCount, rightCount) < errorRate
+                    && percentageDif(upCount, downCount) < errorRate
+                    && percentageDif(rightCount, downCount) < errorRate;
+            return ans;
         }
-        if (i >= width || rightCount == 0) {
+        catch(Exception e) {
+            System.out.println(e);
             return false;
         }
-        i = x;
-        while (i >= 0 && inputMatrix[i][y] == 0) {
-            leftCount++;
-            i--;
-        }
-        if (i < 0 || leftCount == 0) {
-            return false;
-        }
-        i = y;
-        while (i >= 0 && inputMatrix[x][i] == 0) {
-            downCount++;
-            i++;
-        }
-        if (i >= width || downCount == 0) {
-            return false;
-        }
-        i = y;
-        while (i >= 0 && inputMatrix[x][i] == 0) {
-            upCount++;
-            i--;
-        }
-        if (i < 0 || upCount == 0) {
-            return false;
-        }
-        boolean ans = percentageDif(leftCount, rightCount) < errorRate
-                && percentageDif(upCount, downCount) < errorRate
-                && percentageDif(rightCount, downCount) < errorRate;
-        return ans;
+
+
     }
 
     public static boolean isAlignPattern(int[][] inputMatrix, int x, int y, int width, int height, int blockSize) {
@@ -1215,7 +986,7 @@ public class QRTransform {
             for (int dy = -2; dy <= 2; dy++) {
                 int nx = x + dx * blockSize;
                 int ny = y + dy * blockSize;
-                if (nx < 0 || ny < 0 || nx > width || ny > height) {
+                if (nx < 0 || ny < 0 || nx >= width || ny >= height) {
                     return false;
                 }
                 int expectedPixel = expectedPattern[dx + 2][dy + 2];
@@ -1227,52 +998,39 @@ public class QRTransform {
         return true;
     }
 
-    public static int findAlignPattern(int[][] inputMatrix, int width, int height, int[] xAlign, int[] yAlign, int blockSize) {
-        int countAlign = 0;
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                if (isAlignPattern(inputMatrix, i, j, width, height, blockSize)) {
-                    xAlign[countAlign] = i;
-                    yAlign[countAlign] = j;
-                    countAlign++;
+    public static List<Point> findAlignPattern(int[][] inputMatrix, int width, int height, int[] xAlign, int[] yAlign, int blockSize) {
+        List<Point> alignPoints = new ArrayList<>();
+        for (int y = 0; y < height; y++) { // Iterate over rows first
+            for (int x = 0; x < width; x++) { // Then columns
+                if (isAlignPattern(inputMatrix, x, y, width, height, blockSize)) {
+                    alignPoints.add(new Point(x, y));
                 }
             }
         }
-        return countAlign;
+        return alignPoints;
     }
 
-    public static int getxEye1() {
-        return (int) xEye1;
+    public static int getXEyeAff1() {
+        return (int) offsetEye;
     }
 
-    public static int getxEye2() {
-        return (int) xEye2;
+    public static int getYEyeAff1() {
+        return (int) offsetEye;
+    }
+    public static int getXEyeAff2() {
+        return (int) offsetEye;
     }
 
-    public static int getxEye3() {
-        return (int) xEye3;
+    public static int getYEyeAff2() {
+        return (int) qrWidth - (int) offsetEye;
+    }
+    public static int getXEyeAff3() {
+        return (int) qrWidth - (int) offsetEye;
     }
 
-    public static int getyEye1() {
-        return (int) yEye1;
+    public static int getYEyeAff3() {
+        return (int) offsetEye;
     }
-
-    public static int getyEye2() {
-        return (int) yEye2;
-    }
-
-    public static int getyEye3() {
-        return (int) yEye3;
-    }
-
-    public static int getyEye4() {
-        return (int) yEye4;
-    }
-
-    public static int getxEye4() {
-        return (int) xEye4;
-    }
-
     public static int getBlockSize() {
         return blockSize;
     }
@@ -1281,91 +1039,89 @@ public class QRTransform {
         return (int) qrWidth;
     }
 
-    public static int getoffsetEye() {
-        return (int) offsetEye;
-    }
-
     public static void startFindEye(Bitmap image) {
         try {
-//            File inputFile = new File(inputPath);
-            Bitmap grayImage = convertToGrayImage(image);    //  Chuyen sang anh gray
-            int[][] binaryMatrix = convertToBinaryMatrix(grayImage);// Chuyen sang ma tran binary
+            Bitmap grayImage = convertToGrayImage(image);
+            int[][] binaryMatrix = convertToBinaryMatrix(grayImage);
             int height = grayImage.getHeight();
             int width = grayImage.getWidth();
-            detectFilter(binaryMatrix, width, height);              // Xu ly tim Eye cua QR trong ma tran
-
-            /*
-                Rotate QR
-             */
-            Bitmap binaryImage = drawImageFromBinaryMatrix(binaryMatrix);
-
-            Bitmap transformedImage;
-            transformedImage = transformImage(binaryImage);
-            setAfiine(transformedImage);
+            detectFilter(binaryMatrix, width, height);
 
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
     public static int[] calculateVersion() {
-        int[] qrSizeAndVersion = {-1,-1};
-        int offsetEye = getoffsetEye();
-        int[][] binaryImage = QRTransform.convertToBinaryMatrix(affineBitmap);
-        int qrWidth = QRTransform.getqrWidth();
-        int qrBlockSize = QRTransform.getBlockSize();
-        int offsetX = offsetEye + qrBlockSize * 3;
-        int offsetY = offsetEye + qrBlockSize * 3;
-        int[] countBlock = {13, 0};
-        System.out.println("offsetX=" + offsetX);
-        System.out.println("offsetEye=" + offsetEye);
-        for (int x = offsetX; x < qrWidth - offsetEye; x++) {
-            int currentState = binaryImage[x][offsetY];
-            for (int i = x; i < qrWidth - offsetEye; i++) {
-                if (binaryImage[i][offsetY] != currentState) {
-                    //System.out.println("i=" + i + " ,currentstate=" + currentState);
-                    countBlock[currentState]++;
-                    currentState = binaryImage[i][offsetY];
-                    x = i;
-                }
+        int totalBlock = (int) qrWidth / blockSize;
+        int[] qrSizeAndVersion = {0, 0};
+        for(int i = 0 ; i < 40; i++){
+            if(totalBlock <= 21 + 4 * i){
+                qrSizeAndVersion[0] = 21 + 4 * i;
+                qrSizeAndVersion[1] = i + 1;
+                break;
             }
         }
-        int totalBlockH = countBlock[0] + countBlock[1];
-        System.out.println("countBlockBlackH=" + countBlock[0]);
-        System.out.println("countBlockWhiteH=" + countBlock[1]);
-        countBlock[0] = 13;
-        countBlock[1] = 0;
-        for (int y = offsetY; y < qrWidth - offsetEye; y++) {
-            int currentState = binaryImage[offsetX][y];
-            for (int i = y; i < qrWidth - offsetEye; i++) {
-                if (binaryImage[offsetX][i] != currentState) {
-                    //System.out.println("i=" + i + " ,currentstate=" + currentState);
-                    countBlock[currentState]++;
-                    currentState = binaryImage[offsetX][i];
-                    y = i;
-                }
-            }
-        }
-        int totalBlockV = countBlock[0] + countBlock[1];
-        System.out.println("countBlockBlackV=" + countBlock[0]);
-        System.out.println("countBlockWhiteV=" + countBlock[1]);
-
-        int expectedBlockCount = Math.round(qrWidth / qrBlockSize);
-        System.out.println("expectedBlock=" + expectedBlockCount);
-        double percentageH = QRTransform.percentageDif((double) totalBlockH, (double) expectedBlockCount);
-        double percentageV = QRTransform.percentageDif((double) totalBlockV, (double) expectedBlockCount);
-        int totalBlock = 0;
-        System.out.println("percentageH=" + percentageH);
-        System.out.println("percentageV=" + percentageV);
-        if (percentageH > percentageV) {
-            totalBlock = totalBlockV;
-        } else {
-            totalBlock = totalBlockH;
-        }
-
-        int version = (totalBlock - 21) / 4 + 1;
-        qrSizeAndVersion[0] = totalBlock;
-        qrSizeAndVersion[1] = version;
         return qrSizeAndVersion;
     }
+    public static Mat computeAffineTransform(Point src1, Point src2, Point src3,
+                                      Point dst1, Point dst2, Point dst3) {
+        MatOfPoint2f srcMat = new MatOfPoint2f(src1, src2, src3);
+        MatOfPoint2f dstMat = new MatOfPoint2f(dst1, dst2, dst3);
 
+        Mat affineMatrix = Imgproc.getAffineTransform(srcMat, dstMat);
+
+        return affineMatrix;
+    }
+    public static Mat bwArrayToMat(int[][] bwImg) {
+        if (bwImg == null || bwImg.length == 0) {
+            throw new IllegalArgumentException("Input image array is null or empty");
+        }
+
+        int rows = bwImg.length;
+        int cols = bwImg[0].length;
+
+        Mat mat = new Mat(rows, cols, CvType.CV_8UC1);
+
+        byte[] matData = new byte[rows * cols];
+        int index = 0;
+        for (int i = 0; i < rows; i++) {
+            if (bwImg[i].length != cols) {
+                throw new IllegalArgumentException("All rows in the image array must have the same number of columns");
+            }
+            for (int j = 0; j < cols; j++) {
+                int pixel = bwImg[i][j];
+                pixel = pixel * 255;
+                matData[index++] = (byte) pixel;
+            }
+        }
+
+        mat.put(0, 0, matData);
+        return mat;
+    }
+    public static int[][] matToArray(Mat mat) {
+        if (mat == null || mat.empty()) {
+            throw new IllegalArgumentException("Input Mat is null or empty");
+        }
+
+        if (mat.type() != CvType.CV_8UC1) {
+            throw new IllegalArgumentException("Input Mat must be of type CV_8UC1");
+        }
+
+        int rows = mat.rows();
+        int cols = mat.cols();
+        int[][] imageArray = new int[rows][cols];
+
+        byte[] matData = new byte[rows * cols];
+        mat.get(0, 0, matData);
+
+        int index = 0;
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                int pixel = matData[index++] & 0xFF;
+                imageArray[i][j] = pixel;
+            }
+        }
+
+        return imageArray;
+    }
 }

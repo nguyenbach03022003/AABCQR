@@ -183,8 +183,8 @@ public class QRCodeDecoder {
         int[] message = reverseInterleaveAndErrorCorretion(finalMessage, this.version, vi);
         String messageBitString = intArrayToBinaryString(message);
         QRCodeDataDecoding dataDecoding = new QRCodeDataDecoding(this.version, this.ecLevel, messageBitString);
-        String finalMessage = dataDecoding.decode();
-        return finalMessage;
+        String msgString = dataDecoding.decode();
+        return msgString;
     }
 
     private String readHorizontalFormatInformationBits() {

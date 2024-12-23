@@ -2,6 +2,8 @@ package com.app.src.abcqr.ui.main.fragment;
 
 import android.app.Application;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.net.Uri;
 import android.provider.MediaStore;
 import android.widget.Toast;
@@ -18,13 +20,6 @@ import com.app.src.abcqr.data.repository.MyQRDatabase;
 import com.app.src.abcqr.data.repository.MyQRRepository;
 import com.app.src.abcqr.utils.QR.scanner.QRCodeDecoder;
 import com.app.src.abcqr.utils.QR.scanner.Scanner;
-import com.google.zxing.BinaryBitmap;
-import com.google.zxing.LuminanceSource;
-import com.google.zxing.MultiFormatReader;
-import com.google.zxing.RGBLuminanceSource;
-import com.google.zxing.Reader;
-import com.google.zxing.Result;
-import com.google.zxing.common.HybridBinarizer;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -61,11 +56,30 @@ public class ScanViewModel extends AndroidViewModel {
 //
 //            LuminanceSource source = new RGBLuminanceSource(bitmap.getWidth(), bitmap.getHeight(), intArray);
 //            BinaryBitmap binaryBitmap = new BinaryBitmap(new HybridBinarizer(source));
+            int padding = 4;
+            int originalWidth = bitmap.getWidth();
+            int originalHeight = bitmap.getHeight();
 
-            int[][] qrModuleMatrix = Scanner.getQRMatrix(bitmap);
+            // Create a new bitmap with padding
+            Bitmap paddedBitmap = Bitmap.createBitmap(
+                    originalWidth + padding * 2,
+                    originalHeight + padding * 2,
+                    bitmap.getConfig() != null ? bitmap.getConfig() : Bitmap.Config.ARGB_8888
+            );
+
+            // Initialize a canvas with the new bitmap
+            Canvas canvas = new Canvas(paddedBitmap);
+
+            // Optional: Fill the padding area with a solid color (e.g., white)
+            canvas.drawColor(Color.WHITE);
+
+            // Draw the original bitmap onto the canvas with the specified padding
+            canvas.drawBitmap(bitmap, padding, padding, null);
+
+            int[][] qrModuleMatrix = Scanner.getQRMatrix(paddedBitmap);
             QRCodeDecoder decoder = new QRCodeDecoder(qrModuleMatrix);
-            decoder.decode();
-            qrCodeResult.setValue(decoder.getFinalMessage());
+            String result = decoder.decode();
+            qrCodeResult.setValue(result);
         } catch(Exception e){
             qrCodeResult.setValue("Loi");
         }

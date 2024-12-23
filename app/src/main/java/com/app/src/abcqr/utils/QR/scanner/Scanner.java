@@ -1,10 +1,12 @@
 
 package com.app.src.abcqr.utils.QR.scanner;
 
+import static com.app.src.abcqr.utils.QR.scanner.QRTransform.calculateDistance;
 import static com.app.src.abcqr.utils.QR.scanner.QRTransform.calculateVersion;
+import static com.app.src.abcqr.utils.QR.scanner.QRTransform.getBlockSize;
+import static com.app.src.abcqr.utils.QR.scanner.QRTransform.getXEyeAff1;
 
 import android.graphics.Bitmap;
-import android.telephony.TelephonyCallback;
 import android.util.Log;
 
 import org.opencv.android.Utils;
@@ -14,53 +16,59 @@ import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 //import org.opencv.highgui.Highgui;
-import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 //import javax.imageio.ImageIO;
 //import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Scanner {
 
     private static int[] xAlign;
     private static int[] yAlign;
-    private static int numAlign;
+    private static List<Point> alignPoints;
     private static int qrSize = 0;
-    private static Point[] srcPoints;
-    private static Point[] dstPoints;
-    private static Bitmap output;
+    private static int qrBlockSize = 0;
+    private static Point[] srcPerspectiveTransformPoints;
+    private static Point[] dstPerspectiveTransformPoints;
     private static Bitmap inputBitmap;
+    private static Bitmap affineBitmap;
     private static Bitmap transformBitmap;
     private static int[][] outputQRModuleMatrix;
-    public void setOutput(Bitmap in) {
-        output = in;
-    }
-
-    public Bitmap getOutput() {
-        return output;
-    }
 
     public static void toBlockMatrixQR() {
         try {
-            Bitmap grayImage = QRTransform.convertToGrayImage(transformBitmap);
-            int[][] binaryMatrix = QRTransform.convertToBinaryMatrix(grayImage);
+            Mat binary = new Mat();
+            Mat transformMat = new Mat();
+            Utils.bitmapToMat(transformBitmap, transformMat);
+            Mat gray = new Mat();
+            Imgproc.cvtColor(transformMat, gray, Imgproc.COLOR_BGR2GRAY);
+
+            Imgproc.threshold(gray, binary, 128, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+            Utils.matToBitmap(binary, transformBitmap);
+
+            int[][] binaryMatrix = QRTransform.convertToBinaryMatrix(transformBitmap);
+            boolean foundOffset = false;
             int offset = 0;
-            System.out.println("start find offset");
-            for (int x = 0; x < binaryMatrix.length / 2; x++) {
-                for (int y = 0; y < binaryMatrix[x].length / 2; y++) {
-                    if (binaryMatrix[x][y] == 0) {
-                        offset = x;
-                        break;
+            while(!foundOffset){
+                int totalWhite = 0;
+                for(int i = 0 ; i < qrBlockSize; i++){
+                    for(int j = 0; j < qrBlockSize; j++){
+                        if(i + offset < transformBitmap.getHeight() && j+ offset < transformBitmap.getWidth())
+                            if(binaryMatrix[i + offset][j+offset] == 0)
+                                totalWhite++;
                     }
                 }
-                if (offset != 0) {
-                    break;
+                if(totalWhite > qrBlockSize * qrBlockSize - qrBlockSize){
+                    foundOffset = true;
+                } else {
+                    offset++;
                 }
             }
-            QRTransform.convertToBlockMatrix(binaryMatrix, outputQRModuleMatrix, grayImage.getWidth(), grayImage.getHeight(), offset, QRTransform.getBlockSize(), QRTransform.getqrWidth(), qrSize);
 
+            QRTransform.convertToBlockMatrix(binaryMatrix, outputQRModuleMatrix, transformBitmap.getWidth(), transformBitmap.getHeight(), offset, qrBlockSize, qrSize);
+            int a = 0;
         } catch (Exception e) {
             System.out.println("Something wrong processing");
             System.out.println(e.getMessage());
@@ -76,193 +84,163 @@ public class Scanner {
         System.out.println("Start Find Alignment Pattern");
         //QRTransform.startFindEye();
         try {
-            Bitmap grayImage = QRTransform.convertToGrayImage(inputBitmap);
             System.out.println("Start Find Alignment Pattern here");
-            int[][] binaryImage = QRTransform.convertToBinaryMatrix(grayImage);
+            int[][] binaryImage = QRTransform.convertToBinaryMatrix(affineBitmap);
             xAlign = new int[qrWidth + 1];
             yAlign = new int[qrWidth + 1];
-            numAlign = QRTransform.findAlignPattern(binaryImage, grayImage.getWidth(), grayImage.getHeight(), xAlign, yAlign, qrBlockSize);
+            alignPoints = QRTransform.findAlignPattern(binaryImage, affineBitmap.getWidth(), affineBitmap.getHeight(), xAlign, yAlign, qrBlockSize);
         } catch (Exception e) {
             System.out.println("Error Load Image");
             throw new RuntimeException(e);
         }
     }
 
-    public static int uniqueAlignArray(int numAlign, int qrBlockSize) {
-        int countUniquePoint = numAlign;
-        for (int i = 0; i < numAlign - 1; i++) {
-            if (xAlign[i] == -1 && yAlign[i] == -1) {
-                continue;
-            }
-            for (int j = i + 1; j < numAlign; j++) {
-                if (xAlign[j] == -1 && yAlign[j] == -1) {
-                    continue;
-                }
-                //System.out.println("x:" + i + " ,y:" + j+","+QRTransform.calculateDistance(xAlign[i], yAlign[i], xAlign[j], yAlign[j]));
-                if (QRTransform.calculateDistance(xAlign[i], yAlign[i], xAlign[j], yAlign[j]) < qrBlockSize) {
-                    xAlign[j] = -1;
-                    yAlign[j] = -1;
-                    countUniquePoint--;
+    public static List<Point> uniqueAlignArray (List<Point> alignPoints, int qrBlockSize) {
+        List<Point> uniquePoints = new ArrayList<>();
+
+        for (Point currentPoint : alignPoints) {
+            boolean isUnique = true;
+            for (Point uniquePoint : uniquePoints) {
+                if (calculateDistance(currentPoint.x,currentPoint.y, uniquePoint.x, uniquePoint.y) < qrBlockSize) {
+                    isUnique = false;
+                    break;
                 }
             }
-        }
-        int[] xNewAlign = new int[countUniquePoint];
-        int[] yNewAlign = new int[countUniquePoint];
-        int index = 0;
-        for (int i = 0; i < numAlign; i++) {
-            if (xAlign[i] != -1 && yAlign[i] != -1) {
-                xNewAlign[index] = xAlign[i];
-                yNewAlign[index] = yAlign[i];
-                index++;
+            if (isUnique) {
+                uniquePoints.add(currentPoint);
             }
         }
-        xAlign = xNewAlign;
-        yAlign = yNewAlign;
-        return countUniquePoint;
+
+        return uniquePoints;
+
     }
 
-    public static void addingAlignPattern(int qrSize, int qrVersion, int qrBlockSize, int numAlign) {
-        int[][] alignPosition = {{0}, {0},
-                {6, 18},
-                {6, 22},
-                {6, 26},
-                {6, 30},
-                {6, 34},
-                {6, 22, 38}, {6, 24, 42}, {6, 26, 46}, {6, 28, 50}, {6, 30, 54}, {6, 32, 58}, {6, 34, 62}, {6, 26, 45, 66},
-                {6, 26, 48, 70}, {6, 26, 50, 74}, {6, 30, 54, 78}, {6, 30, 56, 82}, {6, 30, 58, 86}, {6, 34, 62, 90},
-                {6, 28, 50, 72, 94}, {6, 26, 50, 74, 98}, {6, 30, 54, 78, 102}, {6, 28, 54, 80, 106}, {6, 32, 58, 84, 110}, {6, 30, 58, 86, 114}, {6, 34, 62, 90, 118},
-                {6, 26, 50, 74, 98, 122}, {6, 30, 54, 78, 102, 126}, {6, 26, 52, 78, 104, 130}, {6, 30, 56, 82, 108, 134}, {6, 34, 60, 86, 112, 138}, {6, 30, 58, 86, 114, 142}, {6, 34, 62, 90, 118, 146},
-                {6, 30, 54, 78, 102, 126, 150}, {6, 24, 50, 76, 102, 128, 154}, {6, 28, 54, 80, 106, 132, 158}, {6, 32, 58, 84, 110, 136, 162}, {6, 26, 54, 82, 110, 138, 166}, {6, 30, 58, 86, 114, 142, 170},
+    public static void addingAlignPattern(int qrVersion, int qrBlockSize) {
+        int[][] alignmentPatternLocations = {
+                {}, // Version 1 (no alignment pattern)
+                {6, 18}, // Version 2
+                {6, 22}, // Version 3
+                {6, 26}, // Version 4
+                {6, 30}, // Version 5
+                {6, 34}, // Version 6
+                {6, 22, 38}, // Version 7
+                {6, 24, 42}, // Version 8
+                {6, 26, 46}, // Version 9
+                {6, 28, 50}, // Version 10
+                {6, 30, 54}, // Version 11
+                {6, 32, 58}, // Version 12
+                {6, 34, 62}, // Version 13
+                {6, 26, 46, 66}, // Version 14
+                {6, 26, 48, 70}, // Version 15
+                {6, 26, 50, 74}, // Version 16
+                {6, 30, 54, 78}, // Version 17
+                {6, 30, 56, 82}, // Version 18
+                {6, 30, 58, 86}, // Version 19
+                {6, 34, 62, 90}, // Version 20
+                {6, 28, 50, 72, 94}, // Version 21
+                {6, 26, 50, 74, 98}, // Version 22
+                {6, 30, 54, 78, 102}, // Version 23
+                {6, 28, 54, 80, 106}, // Version 24
+                {6, 32, 58, 84, 110}, // Version 25
+                {6, 30, 58, 86, 114}, // Version 26
+                {6, 34, 62, 90, 118}, // Version 27
+                {6, 26, 50, 74, 98, 122}, // Version 28
+                {6, 30, 54, 78, 102, 126}, // Version 29
+                {6, 26, 52, 78, 104, 130}, // Version 30
+                {6, 30, 56, 82, 108, 134}, // Version 31
+                {6, 34, 60, 86, 112, 138}, // Version 32
+                {6, 30, 58, 86, 114, 142}, // Version 33
+                {6, 34, 62, 90, 118, 146}, // Version 34
+                {6, 30, 54, 78, 102, 126, 150}, // Version 35
+                {6, 24, 50, 76, 102, 128, 154}, // Version 36
+                {6, 28, 54, 80, 106, 132, 158}, // Version 37
+                {6, 32, 58, 84, 110, 136, 162}, // Version 38
+                {6, 26, 54, 82, 110, 138, 166}, // Version 39
+                {6, 30, 58, 86, 114, 142, 170}  // Version 40
         };
-        int[] listAlignPos = alignPosition[qrVersion];
-        //System.out.println("QRSize: " + qrSize);
-        boolean isBlocked = false;
-        if (qrSize - 7 * 2 < listAlignPos[listAlignPos.length - 1] + 1) {
-            isBlocked = true;
-        }
 
-        for (int i = 0; i < listAlignPos.length; i++) {
-            System.out.print(listAlignPos[i] + " ");
-        }
+        int[] positions = alignmentPatternLocations[qrVersion - 1];
         int indexPoint = 3;
-        for (int i = 0; i < numAlign; i++) {
-            int xExpected = xAlign[i] / qrBlockSize;
-            int yExpected = yAlign[i] / qrBlockSize;
-            double minPercentage = 100;
-            int xMinValue = 0;
-            for (int j = 0; j < listAlignPos.length; j++) {
-                double percentage = QRTransform.percentageDif(xExpected, listAlignPos[j]);
-                if (percentage < minPercentage) {
-                    xMinValue = listAlignPos[j];
-                    minPercentage = percentage;
-                }
-            }
-            int yMinValue = 0;
-            minPercentage = 100;
-            for (int j = 0; j < listAlignPos.length; j++) {
-                double percentage = QRTransform.percentageDif(yExpected, listAlignPos[j]);
-                if (percentage < minPercentage) {
-                    yMinValue = listAlignPos[j];
-                    minPercentage = percentage;
-                }
-            }
-            if (isBlocked) {
-                if ((yMinValue == listAlignPos[0] && xMinValue == listAlignPos[listAlignPos.length - 1])
-                        || (xMinValue == listAlignPos[0] && yMinValue == listAlignPos[listAlignPos.length - 1])) {
-                    System.out.println("Skipped");
-                    continue;
-                }
-            }
-            System.out.println("xExpected: " + xExpected + " ,yExpected:" + yExpected);
-            System.out.println("xMinvalue: " + xMinValue + " ,yMinValue:" + yMinValue);
-            srcPoints[indexPoint + i] = new Point(xAlign[i], yAlign[i]);
-            dstPoints[indexPoint + i] = new Point((xMinValue + 1) * qrBlockSize, (yMinValue + 1) * qrBlockSize);
+        for (Point p: alignPoints) {
+            double minDistance = Double.MAX_VALUE;
+            Point expectedLogicalPoint = null;
+            for (int posX  : positions) {
+                for (int posY  : positions) {
+                    double expectedX = (posX + 0.5) * qrBlockSize;
+                    double expectedY = (posY + 0.5) * qrBlockSize;
+                    double distance = Math.hypot(p.x - expectedX, p.y - expectedY);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        expectedLogicalPoint = new Point(expectedX, expectedY);
+                    }
 
-        }
-        //return null;
-    }
-
-    public static void initFile() {
-        try {
-            File myObj = new File("output.jpg");
-            File myObj1 = new File("QRAffine.png");
-            if (myObj.createNewFile()) {
-                System.out.println("File created: " + myObj.getName());
-            } else {
-                System.out.println("File " + myObj.getName() + " already exists.");
+                }
             }
-            if (myObj1.createNewFile()) {
-                System.out.println("File created: " + myObj1.getName());
-            } else {
-                System.out.println("File " + myObj1.getName() + " already exists.");
+            if (expectedLogicalPoint != null && minDistance < 4 * qrBlockSize * qrBlockSize) {
+                srcPerspectiveTransformPoints[indexPoint] = p;
+                dstPerspectiveTransformPoints[indexPoint] = expectedLogicalPoint;
+                indexPoint++;
             }
-        } catch (IOException e) {
-            System.out.println("An error occurred.");
-            e.printStackTrace();
         }
     }
 
 
     public static int[][] getQRMatrix(Bitmap bitmap) {
         try {
-            //initFile();
             inputBitmap = bitmap;
-            Mat srcImage = new Mat();
-            Utils.bitmapToMat(inputBitmap, srcImage);
             QRTransform.startFindEye(inputBitmap);
-            int xEye1 = QRTransform.getxEye1();
-            int xEye2 = QRTransform.getxEye2();
-            int xEye3 = QRTransform.getxEye3();
-            int yEye1 = QRTransform.getyEye1();
-            int yEye2 = QRTransform.getyEye2();
-            int yEye3 = QRTransform.getyEye3();
-            int qrBlockSize = QRTransform.getBlockSize();
+            // after finding eye complete, affine image is available in QRTransform
+            affineBitmap = QRTransform.getAffineBitmap();
+            Mat srcImage = new Mat();
+            Utils.bitmapToMat(affineBitmap, srcImage);
+
+            qrBlockSize = QRTransform.getBlockSize();
 
             int[] qrSizeAndVersion = calculateVersion();
             qrSize = qrSizeAndVersion[0];
             int qrVersion = qrSizeAndVersion[1];
+
             if (qrVersion != 1) {
                 findAlignmentPattern();
-                numAlign = uniqueAlignArray(numAlign, qrBlockSize);
+                alignPoints = uniqueAlignArray(alignPoints, qrBlockSize);
+                if(alignPoints.size() != 0){
+                    int xEye1Aff = QRTransform.getXEyeAff1();
+                    int yEye1Aff = QRTransform.getYEyeAff1();
+                    int xEye2Aff = QRTransform.getXEyeAff2();
+                    int yEye2Aff = QRTransform.getYEyeAff2();
+                    int xEye3Aff = QRTransform.getXEyeAff3();
+                    int yEye3Aff = QRTransform.getYEyeAff3();
 
-                int xNew1 = qrBlockSize * 4;
-                int yNew1 = qrBlockSize * 4;
-                int xNew2 = qrBlockSize * (qrSize - 4 + 1);
-                int yNew2 = qrBlockSize * 4;
-                int xNew3 = qrBlockSize * 4;
-                int yNew3 = qrBlockSize * (qrSize - 4 + 1);
+                    srcPerspectiveTransformPoints = new Point[alignPoints.size() + 3];
+                    dstPerspectiveTransformPoints = new Point[alignPoints.size() + 3];
+                    srcPerspectiveTransformPoints[0] = new Point(xEye1Aff, yEye1Aff);
+                    srcPerspectiveTransformPoints[1] = new Point(xEye2Aff, yEye2Aff);
+                    srcPerspectiveTransformPoints[2] = new Point(xEye3Aff, yEye3Aff);
+                    dstPerspectiveTransformPoints[0] = new Point(xEye1Aff, yEye1Aff);
+                    dstPerspectiveTransformPoints[1] = new Point(xEye2Aff, yEye2Aff);
+                    dstPerspectiveTransformPoints[2] = new Point(xEye3Aff, yEye3Aff);
 
-                srcPoints = new Point[numAlign + 3];
-                dstPoints = new Point[numAlign + 3];
-                srcPoints[0] = new Point(xEye1, yEye1);
-                srcPoints[1] = new Point(xEye2, yEye2);
-                srcPoints[2] = new Point(xEye3, yEye3);
-                //srcPoints[3] = new Point(xAlignBefore, yAlignBefore);
-                dstPoints[0] = new Point(xNew1, yNew1);
-                dstPoints[1] = new Point(xNew2, yNew2);
-                dstPoints[2] = new Point(xNew3, yNew3);
+                    addingAlignPattern(qrVersion, qrBlockSize);
 
-                addingAlignPattern(qrSize, qrVersion, qrBlockSize, numAlign);
+                    MatOfPoint2f srcMat = new MatOfPoint2f(srcPerspectiveTransformPoints);
+                    MatOfPoint2f dstMat = new MatOfPoint2f(dstPerspectiveTransformPoints);
 
-                MatOfPoint2f srcMat = new MatOfPoint2f(srcPoints);
-                MatOfPoint2f dstMat = new MatOfPoint2f(dstPoints);
+                    // Compute homography using RANSAC
+                    Mat homographyMatrix = Calib3d.findHomography(srcMat, dstMat, Calib3d.RANSAC, 3);
+                    Mat dstImage = new Mat();
+                    Imgproc.warpPerspective(srcImage, dstImage, homographyMatrix, srcImage.size());
 
-                // Compute homography using RANSAC
-                Mat homographyMatrix = Calib3d.findHomography(srcMat, dstMat, Calib3d.RANSAC, 3);
-                Mat dstImage = new Mat();
-                Imgproc.warpPerspective(srcImage, dstImage, homographyMatrix, srcImage.size());
-
-                try {
-                    transformBitmap = Bitmap.createBitmap(dstImage.cols(), dstImage.rows(), Bitmap.Config.ARGB_8888);
-                    Utils.matToBitmap(dstMat, transformBitmap);
-                    int a = 0;
+                    try {
+                        transformBitmap = matToBitmap(dstImage);
+                    }
+                    catch (CvException e){
+                        Log.d("Exception",e.getMessage());
+                    }
+                } else{
+                    transformBitmap = affineBitmap;
                 }
-                catch (CvException e){
-                    Log.d("Exception",e.getMessage());}
-
             } else {
-                  transformBitmap = QRTransform.getAffine();
-
+                  transformBitmap = affineBitmap;
             }
         } catch (Exception e) {
             System.out.println("Load Image Error");
@@ -272,19 +250,54 @@ public class Scanner {
         toBlockMatrixQR();
         return outputQRModuleMatrix;
     }
+    public static Bitmap matToBitmap(Mat mat) {
+        // Check if the Mat is empty
+        if (mat.empty()) {
+            Log.e("MatToBitmap", "Input Mat is empty.");
+            return null;
+        }
 
-//    public static void main(String[] args) {
-//
-//        // Load an image and apply the homography
-//        String imagePath = "QR7.png"; // Replace with your image path
-//        int[][] qrMatrix = getQRMatrix(imagePath);
-//        for (int i = 0; i < qrMatrix.length; i++) {
-//            for (int j = 0; j < qrMatrix[i].length; j++) {
-//                System.out.print(qrMatrix[i][j] + " ");
-//            }
-//            System.out.println();
-//        }
-//
-//        //addingAlignPatternSrc(srcPoints,qrSize,qrVersion);
+        Bitmap bitmap = null;
+        Mat convertedMat = new Mat();
+
+        try {
+            switch (mat.channels()) {
+                case 1:
+                    // Grayscale image
+                    Imgproc.cvtColor(mat, convertedMat, Imgproc.COLOR_GRAY2RGBA);
+                    break;
+                case 3:
+                    // BGR to RGBA
+                    Imgproc.cvtColor(mat, convertedMat, Imgproc.COLOR_BGR2RGBA);
+                    break;
+                case 4:
+                    // BGRA to RGBA
+                    Imgproc.cvtColor(mat, convertedMat, Imgproc.COLOR_BGRA2RGBA);
+                    break;
+                default:
+                    Log.e("MatToBitmap", "Unsupported number of channels: " + mat.channels());
+                    return null;
+            }
+
+            // Create Bitmap with the same dimensions as the converted Mat
+            bitmap = Bitmap.createBitmap(convertedMat.cols(), convertedMat.rows(), Bitmap.Config.ARGB_8888);
+
+            // Convert Mat to Bitmap
+            Utils.matToBitmap(convertedMat, bitmap);
+
+        } catch (Exception e) {
+            Log.e("MatToBitmap", "Exception converting Mat to Bitmap: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        } finally {
+            // Release the converted Mat to free memory
+            if (!convertedMat.empty()) {
+                convertedMat.release();
+            }
+        }
+
+        return bitmap;
+    }
+
 //    }
 }
