@@ -889,7 +889,7 @@ public class QRTransform {
             }
             if(currentVerticalLinesIndex >= qrSize + 1) break;
         }
-        int a = 0;
+//        int a = 0;
         for(int y = 0; y < qrSize; y++){
             int yStart = horizontalLines[y];
             int yEnd = horizontalLines[y+1];

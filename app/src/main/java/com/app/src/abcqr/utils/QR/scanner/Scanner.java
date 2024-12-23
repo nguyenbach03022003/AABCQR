@@ -200,7 +200,7 @@ public class Scanner {
             qrSize = qrSizeAndVersion[0];
             int qrVersion = qrSizeAndVersion[1];
 
-            if (qrVersion != 1) {
+            if (qrVersion >= 7) {
                 findAlignmentPattern();
                 alignPoints = uniqueAlignArray(alignPoints, qrBlockSize);
                 if(alignPoints.size() != 0){

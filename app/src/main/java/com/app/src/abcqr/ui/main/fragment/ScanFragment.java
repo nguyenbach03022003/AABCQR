@@ -139,7 +139,7 @@ public class ScanFragment extends Fragment implements QRAdapter.OnItemClickListe
             uri = Uri.parse(result);
             positiveButtonText = "Open";
             type = "Map";
-        } else if (result.substring(0,7).toLowerCase().equals("http://")) {
+        } else if (result.toLowerCase().startsWith("http://")) {
             title = "Open Web page";
             message = "QR Action detected, would you like to open this web page? " + result;
             action = Intent.ACTION_VIEW;

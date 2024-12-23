@@ -21,6 +21,11 @@ import com.app.src.abcqr.data.repository.MyQRRepository;
 import com.app.src.abcqr.utils.QR.scanner.QRCodeDecoder;
 import com.app.src.abcqr.utils.QR.scanner.Scanner;
 
+import org.opencv.android.Utils;
+import org.opencv.core.Mat;
+import org.opencv.core.Size;
+import org.opencv.imgproc.Imgproc;
+
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -28,7 +33,8 @@ public class ScanViewModel extends AndroidViewModel {
     private MyQRRepository myQRRepository;
     private MutableLiveData<List<MyQR>> myQRList;
     private final MutableLiveData<String> qrCodeResult;
-
+    private static final int MAX_WIDTH = 1000;
+    private static final int MAX_HEIGHT = 1000;
     public ScanViewModel(
             @NonNull Application application
     ) {
@@ -51,11 +57,9 @@ public class ScanViewModel extends AndroidViewModel {
     }
     public LiveData<String> decodeQRCode(Bitmap bitmap) {
         try {
-//            int[] intArray = new int[bitmap.getWidth() * bitmap.getHeight()];
-//            bitmap.getPixels(intArray, 0, bitmap.getWidth(), 0, 0, bitmap.getWidth(), bitmap.getHeight());
-//
-//            LuminanceSource source = new RGBLuminanceSource(bitmap.getWidth(), bitmap.getHeight(), intArray);
-//            BinaryBitmap binaryBitmap = new BinaryBitmap(new HybridBinarizer(source));
+            if (bitmap.getWidth() > MAX_WIDTH || bitmap.getHeight() > MAX_HEIGHT) {
+                bitmap = resizeBitmapUsingOpenCV(bitmap, MAX_WIDTH, MAX_HEIGHT);
+            }
             int padding = 4;
             int originalWidth = bitmap.getWidth();
             int originalHeight = bitmap.getHeight();
@@ -84,6 +88,42 @@ public class ScanViewModel extends AndroidViewModel {
             qrCodeResult.setValue("Loi");
         }
         return qrCodeResult;
+    }
+    private Bitmap resizeBitmapUsingOpenCV(Bitmap bitmap, int maxWidth, int maxHeight) {
+        Mat mat = new Mat();
+        Utils.bitmapToMat(bitmap, mat);
+
+        // Determine the scaling factor while maintaining aspect ratio
+        double widthRatio = (double) maxWidth / mat.width();
+        double heightRatio = (double) maxHeight / mat.height();
+        double scalingFactor = Math.min(widthRatio, heightRatio);
+
+        // If the image is already within the desired size, return original
+        if (scalingFactor >= 1.0) {
+            return bitmap;
+        }
+
+        // Calculate new dimensions
+        int newWidth = (int) (mat.width() * scalingFactor);
+        int newHeight = (int) (mat.height() * scalingFactor);
+
+        // Resize the image
+        Mat resizedMat = new Mat();
+        Size newSize = new Size(newWidth, newHeight);
+        Imgproc.resize(mat, resizedMat, newSize, 0, 0, Imgproc.INTER_AREA);
+
+        Bitmap resizedBitmap = Bitmap.createBitmap(
+                newWidth,
+                newHeight,
+                bitmap.getConfig() != null ? bitmap.getConfig() : Bitmap.Config.ARGB_8888
+        );
+        Utils.matToBitmap(resizedMat, resizedBitmap);
+
+        // Release Mats to free memory
+        mat.release();
+        resizedMat.release();
+
+        return resizedBitmap;
     }
 
 }
