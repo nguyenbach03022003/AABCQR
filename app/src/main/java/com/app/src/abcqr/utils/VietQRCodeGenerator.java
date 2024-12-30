@@ -88,8 +88,8 @@ public class VietQRCodeGenerator {
         String bank_info ="00" + countCharacters(bankCode) + bankCode;
         String acc_info  ="01" + countCharacters(accountNumber) + accountNumber;
         String service_info = "02" + countCharacters(service_code) + service_code;
-        String ID38_data01 = bank_info + acc_info + service_info;
-        String  data_ID38 = ID38_data00 +"01" +  countCharacters(ID38_data01)+ ID38_data01;
+        String ID38_data01 = bank_info + acc_info ;
+        String  data_ID38 = ID38_data00 +"01" +  countCharacters(ID38_data01)+ ID38_data01 + service_info;
         return "38" + countCharacters(data_ID38) + data_ID38;
     }
     public static String countCharacters(String input) {
